@@ -21,62 +21,57 @@ public enum UnitStatus
 
 public abstract class NeuronNode
 {
-    public string Id { get; set; }
+    public string Id { get; set; } = Guid.NewGuid().ToString();
 }
 
 public sealed class InputNode : NeuronNode
 {
-    public TileColor TriggerColor { get; set; }
-
     public InputNode(TileColor triggerColor)
     {
         TriggerColor = triggerColor;
-        Id = $"In.{ColorChar(triggerColor)}";
     }
 
-    static char ColorChar(TileColor c) => c switch
-    {
-        TileColor.Red => 'R',
-        TileColor.Green => 'G',
-        TileColor.Blue => 'B',
-        _ => '?'
-    };
+    public TileColor TriggerColor { get; set; }
 }
 
 public sealed class OutputNode : NeuronNode
 {
-    public char Code { get; set; }
-    public Vector2Int Step { get; set; }
-
     public OutputNode(char code, Vector2Int step)
     {
         Code = code;
         Step = step;
-        Id = $"Out.{code}";
     }
+
+    public char Code { get; set; }
+    public Vector2Int Step { get; set; }
 }
 
 public static class NodeCatalog
 {
-    public static NeuronNode FromId(string id) => id switch
+    public static NeuronNode FromId(string id)
     {
-        "In.R"  => new InputNode(TileColor.Red),
-        "In.G"  => new InputNode(TileColor.Green),
-        "In.B"  => new InputNode(TileColor.Blue),
-        "Out.F" => new OutputNode('F', new Vector2Int(1,  0)),
-        "Out.U" => new OutputNode('U', new Vector2Int(1,  1)),
-        "Out.D" => new OutputNode('D', new Vector2Int(1, -1)),
-        _ => throw new ArgumentException($"Unknown node id: {id}")
-    };
+        return id switch
+        {
+            "In.R" => new InputNode(TileColor.Red),
+            "In.G" => new InputNode(TileColor.Green),
+            "In.B" => new InputNode(TileColor.Blue),
+            "Out.F" => new OutputNode('F', new Vector2Int(1, 0)),
+            "Out.U" => new OutputNode('U', new Vector2Int(1, 1)),
+            "Out.D" => new OutputNode('D', new Vector2Int(1, -1)),
+            _ => throw new ArgumentException($"Unknown node id: {id}")
+        };
+    }
 }
 
 public struct Wire
 {
+    public string Id { get; set; }
     public InputNode From { get; set; }
     public OutputNode To { get; set; }
 
-    public Wire(InputNode from, OutputNode to)
+    public Wire(string id, InputNode from, OutputNode to)
     {
+        Id = id;
         From = from;
         To = to;
     }
