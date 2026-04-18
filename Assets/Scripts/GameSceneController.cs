@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -34,6 +35,14 @@ public class GameSceneController : MonoBehaviour
     [SerializeField] private float pauseBetweenSteps = 0.05f;
     [SerializeField] private Toggle fastToggle;
     [SerializeField] private float fastMultiplier = 3f;
+
+    [Header("Popup")] [SerializeField] private GameObject winPopup;
+    [SerializeField] private Button nextButton;
+    [SerializeField] private Button toListButton;
+    [SerializeField] private TMP_Text winLabel;
+    [SerializeField] private TMP_Text statusLabel;
+
+    private string[] levelOrder = Array.Empty<string>();
 
     private readonly Dictionary<string, RectTransform> neuronViews = new();
     private readonly Dictionary<string, GameObject> wireVisuals = new();
@@ -73,6 +82,19 @@ public class GameSceneController : MonoBehaviour
             fastToggle.SetIsOnWithoutNotify(GameSession.FastPlayback);
             fastToggle.onValueChanged.AddListener(OnFastToggleChanged);
         }
+
+        if (nextButton != null)
+        {
+            nextButton.onClick.AddListener(OnNextClicked);
+        }
+
+        if (toListButton != null)
+        {
+            toListButton.onClick.AddListener(OnBackClicked);
+        }
+
+        LoadLevelOrder();
+        HidePopup();
 
         LoadLevel();
 
@@ -390,6 +412,7 @@ public class GameSceneController : MonoBehaviour
             {
                 Debug.Log($"Simulation ended: {cmd.Status}");
                 playbackRoutine = null;
+                OnSimulationEnded(cmd.Status);
                 yield break;
             }
 
@@ -420,6 +443,8 @@ public class GameSceneController : MonoBehaviour
         }
 
         ResetUnit();
+        ClearStatusLabel();
+        HidePopup();
         var commands = Simulator.Simulate(level, brain);
         playbackRoutine = StartCoroutine(PlaySimulation(commands));
     }
@@ -433,6 +458,8 @@ public class GameSceneController : MonoBehaviour
         }
 
         ResetUnit();
+        ClearStatusLabel();
+        HidePopup();
     }
 
     private void ResetUnit()
@@ -444,6 +471,142 @@ public class GameSceneController : MonoBehaviour
 
         var rt = unitInstance.GetComponent<RectTransform>();
         rt.anchoredPosition = LogicalToVisual(level.Start);
+    }
+
+    private void OnSimulationEnded(UnitStatus status)
+    {
+        switch (status)
+        {
+            case UnitStatus.Won:
+                ShowWin();
+                break;
+            case UnitStatus.Crashed:
+                SetStatusLabel("Crashed");
+                break;
+            case UnitStatus.Stuck:
+                SetStatusLabel("Stuck");
+                break;
+        }
+    }
+
+    private void ShowWin()
+    {
+        if (winPopup != null) winPopup.SetActive(true);
+        if (winLabel != null) winLabel.text = "You Won!";
+    }
+
+    private void HidePopup()
+    {
+        if (winPopup != null) winPopup.SetActive(false);
+    }
+
+    private void SetStatusLabel(string text)
+    {
+        if (statusLabel == null) return;
+        statusLabel.gameObject.SetActive(true);
+        statusLabel.text = text;
+    }
+
+    private void ClearStatusLabel()
+    {
+        if (statusLabel == null) return;
+        statusLabel.text = string.Empty;
+        statusLabel.gameObject.SetActive(false);
+    }
+
+    private void OnNextClicked()
+    {
+        var current = GameSession.CurrentLevelId;
+        var idx = Array.IndexOf(levelOrder, current);
+        if (idx < 0 || idx >= levelOrder.Length - 1)
+        {
+            OnBackClicked();
+            return;
+        }
+
+        GameSession.CurrentLevelId = levelOrder[idx + 1];
+        ReloadLevel();
+    }
+
+    private void ReloadLevel()
+    {
+        if (playbackRoutine != null)
+        {
+            StopCoroutine(playbackRoutine);
+            playbackRoutine = null;
+        }
+
+        if (tempWireGo != null)
+        {
+            Destroy(tempWireGo);
+            tempWireGo = null;
+        }
+
+        dragSource = null;
+        unitInstance = null;
+
+        ClearContainer(fieldContainer);
+        ClearContainer(brainContainer);
+        neuronViews.Clear();
+        wireVisuals.Clear();
+
+        HidePopup();
+        ClearStatusLabel();
+
+        LoadLevel();
+        if (level != null)
+        {
+            BuildGrid();
+            SpawnUnit();
+            BuildBrainBoard();
+            brain = new BrainData();
+            DrawWires(brain);
+        }
+    }
+
+    private static void ClearContainer(RectTransform container)
+    {
+        if (container == null) return;
+        for (var i = container.childCount - 1; i >= 0; i--)
+        {
+            Destroy(container.GetChild(i).gameObject);
+        }
+    }
+
+    private void LoadLevelOrder()
+    {
+        var asset = Resources.Load<TextAsset>("Levels/levels");
+        if (asset == null)
+        {
+            levelOrder = Array.Empty<string>();
+            return;
+        }
+
+        var manifest = JsonConvert.DeserializeObject<LevelManifestDto>(asset.text);
+        if (manifest?.levels == null)
+        {
+            levelOrder = Array.Empty<string>();
+            return;
+        }
+
+        levelOrder = new string[manifest.levels.Length];
+        for (var i = 0; i < manifest.levels.Length; i++)
+        {
+            levelOrder[i] = manifest.levels[i].id;
+        }
+    }
+
+    [Serializable]
+    private class LevelManifestDto
+    {
+        public LevelEntryDto[] levels;
+    }
+
+    [Serializable]
+    private class LevelEntryDto
+    {
+        public string id;
+        public string name;
     }
 
     private static void OnFastToggleChanged(bool isOn)
