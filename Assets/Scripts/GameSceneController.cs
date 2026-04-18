@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -23,6 +25,16 @@ public class GameSceneController : MonoBehaviour
     [SerializeField] private float neuronSpacing = 140f;
     [SerializeField] private float neuronRowY = 380f;
 
+    [Header("Playback")] [SerializeField] private float stepDuration = 0.35f;
+
+    [SerializeField] private float pauseBetweenSteps = 0.05f;
+    [SerializeField] private Toggle fastToggle;
+    [SerializeField] private float fastMultiplier = 3f;
+
+    private float CurrentStepDuration => IsFast ? stepDuration / fastMultiplier : stepDuration;
+    private float CurrentPause => IsFast ? pauseBetweenSteps / fastMultiplier : pauseBetweenSteps;
+    private bool IsFast => fastToggle != null && fastToggle.isOn;
+
     private LevelData level;
     private GameObject unitInstance;
 
@@ -35,6 +47,12 @@ public class GameSceneController : MonoBehaviour
             backButton.onClick.AddListener(OnBackClicked);
         }
 
+        if (fastToggle != null)
+        {
+            fastToggle.SetIsOnWithoutNotify(GameSession.FastPlayback);
+            fastToggle.onValueChanged.AddListener(OnFastToggleChanged);
+        }
+
         LoadLevel();
 
         if (level != null)
@@ -42,6 +60,10 @@ public class GameSceneController : MonoBehaviour
             BuildGrid();
             SpawnUnit();
             BuildBrainBoard();
+
+            var brain = BuildSolvedBrain();
+            var commands = Simulator.Simulate(level, brain);
+            StartCoroutine(PlaySimulation(commands));
         }
     }
 
@@ -224,8 +246,96 @@ public class GameSceneController : MonoBehaviour
         _ => "?"
     };
 
+    private BrainData BuildSolvedBrain()
+    {
+        var brain = new BrainData();
+        switch (level.Id)
+        {
+            case "01":
+                Connect(brain, TileColor.Red, 'F');
+                break;
+            case "02":
+                Connect(brain, TileColor.Red, 'F');
+                Connect(brain, TileColor.Green, 'F');
+                break;
+            case "03":
+                Connect(brain, TileColor.Red, 'F');
+                Connect(brain, TileColor.Green, 'U');
+                Connect(brain, TileColor.Blue, 'D');
+                break;
+        }
+        return brain;
+    }
+
+    private void Connect(BrainData brain, TileColor color, char outputCode)
+    {
+        var input = FindInput(color);
+        var output = FindOutput(outputCode);
+        if (input == null || output == null) return;
+        brain.Wires.Add(new Wire(Guid.NewGuid().ToString(), input, output));
+    }
+
+    private InputNode FindInput(TileColor color)
+    {
+        foreach (var column in level.Columns)
+        foreach (var node in column)
+            if (node is InputNode input && input.TriggerColor == color)
+                return input;
+        return null;
+    }
+
+    private OutputNode FindOutput(char code)
+    {
+        foreach (var column in level.Columns)
+        foreach (var node in column)
+            if (node is OutputNode output && output.Code == code)
+                return output;
+        return null;
+    }
+
+    private IEnumerator PlaySimulation(List<MoveCommand> commands)
+    {
+        if (unitInstance == null) yield break;
+        var rt = unitInstance.GetComponent<RectTransform>();
+
+        foreach (var cmd in commands)
+        {
+            var fromPos = LogicalToVisual(cmd.From);
+            var toPos = LogicalToVisual(cmd.To);
+
+            if (fromPos != toPos)
+            {
+                var elapsed = 0f;
+                var duration = CurrentStepDuration;
+                while (elapsed < duration)
+                {
+                    elapsed += Time.deltaTime;
+                    duration = CurrentStepDuration;
+                    rt.anchoredPosition = Vector2.Lerp(fromPos, toPos, Mathf.Clamp01(elapsed / duration));
+                    yield return null;
+                }
+            }
+
+            rt.anchoredPosition = toPos;
+
+            if (cmd.Status != UnitStatus.Running)
+            {
+                Debug.Log($"Simulation ended: {cmd.Status}");
+                yield break;
+            }
+
+            if (CurrentPause > 0f)
+                yield return new WaitForSeconds(CurrentPause);
+        }
+    }
+
     private void OnBackClicked()
     {
         SceneManager.LoadScene(levelSelectSceneName);
+    }
+
+    private static void OnFastToggleChanged(bool isOn)
+    {
+        GameSession.FastPlayback = isOn;
     }
 }
