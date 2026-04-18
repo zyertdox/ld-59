@@ -10,6 +10,8 @@ public class GameSceneController : MonoBehaviour
 {
     [SerializeField] private string levelSelectSceneName = "LevelSelect";
     [SerializeField] private Button backButton;
+    [SerializeField] private Button playButton;
+    [SerializeField] private Button resetButton;
     [SerializeField] private TMP_Text levelLabel;
 
     [Header("Field")] [SerializeField] private RectTransform fieldContainer;
@@ -33,8 +35,10 @@ public class GameSceneController : MonoBehaviour
     [SerializeField] private float fastMultiplier = 3f;
 
     private readonly Dictionary<string, RectTransform> neuronViews = new();
+    private BrainData brain;
 
     private LevelData level;
+    private Coroutine playbackRoutine;
     private GameObject unitInstance;
 
     private float CurrentStepDuration => IsFast ? stepDuration / fastMultiplier : stepDuration;
@@ -48,6 +52,16 @@ public class GameSceneController : MonoBehaviour
         if (backButton != null)
         {
             backButton.onClick.AddListener(OnBackClicked);
+        }
+
+        if (playButton != null)
+        {
+            playButton.onClick.AddListener(OnPlayClicked);
+        }
+
+        if (resetButton != null)
+        {
+            resetButton.onClick.AddListener(OnResetClicked);
         }
 
         if (fastToggle != null)
@@ -64,10 +78,8 @@ public class GameSceneController : MonoBehaviour
             SpawnUnit();
             BuildBrainBoard();
 
-            var brain = BuildSolvedBrain();
+            brain = BuildSolvedBrain();
             DrawWires(brain);
-            var commands = Simulator.Simulate(level, brain);
-            StartCoroutine(PlaySimulation(commands));
         }
     }
 
@@ -422,6 +434,7 @@ public class GameSceneController : MonoBehaviour
             if (cmd.Status != UnitStatus.Running)
             {
                 Debug.Log($"Simulation ended: {cmd.Status}");
+                playbackRoutine = null;
                 yield break;
             }
 
@@ -430,11 +443,52 @@ public class GameSceneController : MonoBehaviour
                 yield return new WaitForSeconds(CurrentPause);
             }
         }
+
+        playbackRoutine = null;
     }
 
     private void OnBackClicked()
     {
         SceneManager.LoadScene(levelSelectSceneName);
+    }
+
+    private void OnPlayClicked()
+    {
+        if (level == null || brain == null)
+        {
+            return;
+        }
+
+        if (playbackRoutine != null)
+        {
+            return;
+        }
+
+        ResetUnit();
+        var commands = Simulator.Simulate(level, brain);
+        playbackRoutine = StartCoroutine(PlaySimulation(commands));
+    }
+
+    private void OnResetClicked()
+    {
+        if (playbackRoutine != null)
+        {
+            StopCoroutine(playbackRoutine);
+            playbackRoutine = null;
+        }
+
+        ResetUnit();
+    }
+
+    private void ResetUnit()
+    {
+        if (unitInstance == null || level == null)
+        {
+            return;
+        }
+
+        var rt = unitInstance.GetComponent<RectTransform>();
+        rt.anchoredPosition = LogicalToVisual(level.Start);
     }
 
     private static void OnFastToggleChanged(bool isOn)
