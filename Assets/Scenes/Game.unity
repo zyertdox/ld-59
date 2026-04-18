@@ -957,6 +957,11 @@ MonoBehaviour:
   tilePrefab: {fileID: 7548906374759008606, guid: 02648591f4447184489d69fc9eb1e442, type: 3}
   unitPrefab: {fileID: 5030879641384186238, guid: 48cbbd0e84f2a094c882a85fe8ef1aa2, type: 3}
   tileSize: 80
+  brainContainer: {fileID: 124573983}
+  neuronPrefab: {fileID: 2111304488154965697, guid: f95e87cdfd3d79846853693b3506daf7, type: 3}
+  neuronSize: 100
+  neuronSpacing: 140
+  neuronRowY: 380
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -16,6 +16,13 @@ public class GameSceneController : MonoBehaviour
     [SerializeField] private GameObject unitPrefab;
     [SerializeField] private float tileSize = 80f;
 
+    [Header("Brain")] [SerializeField] private RectTransform brainContainer;
+
+    [SerializeField] private GameObject neuronPrefab;
+    [SerializeField] private float neuronSize = 100f;
+    [SerializeField] private float neuronSpacing = 140f;
+    [SerializeField] private float neuronRowY = 380f;
+
     private LevelData level;
     private GameObject unitInstance;
 
@@ -34,6 +41,7 @@ public class GameSceneController : MonoBehaviour
         {
             BuildGrid();
             SpawnUnit();
+            BuildBrainBoard();
         }
     }
 
@@ -148,6 +156,73 @@ public class GameSceneController : MonoBehaviour
             _ => Color.clear
         };
     }
+
+    private void BuildBrainBoard()
+    {
+        if (brainContainer == null || neuronPrefab == null) return;
+        if (level?.Columns == null || level.Columns.Length == 0) return;
+
+        var inputs = level.Columns[0];
+        var outputs = level.Columns[level.Columns.Length - 1];
+
+        SpawnNeuronRow(inputs, -neuronRowY);
+        SpawnNeuronRow(outputs, neuronRowY);
+    }
+
+    private void SpawnNeuronRow(NeuronNode[] row, float y)
+    {
+        if (row == null) return;
+
+        var startX = -(row.Length - 1) * neuronSpacing * 0.5f;
+
+        for (var i = 0; i < row.Length; i++)
+        {
+            var node = row[i];
+            var go = Instantiate(neuronPrefab, brainContainer);
+            go.name = $"Neuron_{node.Id}";
+
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = new Vector2(startX + i * neuronSpacing, y);
+            rt.sizeDelta = new Vector2(neuronSize, neuronSize);
+
+            var img = go.GetComponent<Image>();
+            var label = go.GetComponentInChildren<TMP_Text>();
+            ConfigureNeuron(node, img, label);
+        }
+    }
+
+    private static void ConfigureNeuron(NeuronNode node, Image img, TMP_Text label)
+    {
+        switch (node)
+        {
+            case InputNode input:
+                if (img != null) img.color = ColorOf(input.TriggerColor);
+                if (label != null) label.text = InputLabel(input.TriggerColor);
+                break;
+            case OutputNode output:
+                if (img != null) img.color = new Color(0.75f, 0.75f, 0.8f);
+                if (label != null) label.text = OutputArrow(output.Code);
+                break;
+        }
+    }
+
+    private static string InputLabel(TileColor c) => c switch
+    {
+        TileColor.Red => "R",
+        TileColor.Green => "G",
+        TileColor.Blue => "B",
+        _ => "?"
+    };
+
+    private static string OutputArrow(char code) => code switch
+    {
+        'F' => "↑",
+        'U' => "↗",
+        'D' => "↖",
+        _ => "?"
+    };
 
     private void OnBackClicked()
     {
