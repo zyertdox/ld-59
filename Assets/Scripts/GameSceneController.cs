@@ -46,6 +46,10 @@ public class GameSceneController : MonoBehaviour
 
     private readonly Dictionary<string, RectTransform> neuronViews = new();
     private readonly Dictionary<string, GameObject> wireVisuals = new();
+    private readonly Dictionary<string, Color> baseColors = new();
+    private readonly HashSet<string> currentlyHighlighted = new();
+    private static readonly Color HighlightColor = new(1f, 0.95f, 0.4f, 1f);
+
     private BrainData brain;
     private NeuronView dragSource;
 
@@ -277,6 +281,7 @@ public class GameSceneController : MonoBehaviour
             view.Controller = this;
 
             neuronViews[node.Id] = rt;
+            if (img != null) baseColors[node.Id] = img.color;
         }
     }
 
@@ -323,6 +328,10 @@ public class GameSceneController : MonoBehaviour
 
         rt.sizeDelta = new Vector2(length, rt.sizeDelta.y);
         rt.localEulerAngles = new Vector3(0f, 0f, angle);
+
+        var img = go.GetComponent<Image>();
+        if (img != null) baseColors[id] = img.color;
+
         return go;
     }
 
@@ -379,6 +388,53 @@ public class GameSceneController : MonoBehaviour
         };
     }
 
+    private void ApplyHighlights(IList<string> ids)
+    {
+        ClearHighlights();
+        if (ids == null) return;
+
+        foreach (var id in ids)
+        {
+            SetHighlighted(id, true);
+            currentlyHighlighted.Add(id);
+        }
+    }
+
+    private void ClearHighlights()
+    {
+        foreach (var id in currentlyHighlighted)
+        {
+            SetHighlighted(id, false);
+        }
+
+        currentlyHighlighted.Clear();
+    }
+
+    private void SetHighlighted(string id, bool active)
+    {
+        Image img = null;
+
+        if (neuronViews.TryGetValue(id, out var neuronRt))
+        {
+            img = neuronRt.GetComponent<Image>();
+        }
+        else if (wireVisuals.TryGetValue(id, out var wireGo))
+        {
+            img = wireGo.GetComponent<Image>();
+        }
+
+        if (img == null) return;
+
+        if (active)
+        {
+            img.color = HighlightColor;
+        }
+        else if (baseColors.TryGetValue(id, out var baseColor))
+        {
+            img.color = baseColor;
+        }
+    }
+
     private IEnumerator PlaySimulation(List<MoveCommand> commands)
     {
         if (unitInstance == null)
@@ -388,13 +444,18 @@ public class GameSceneController : MonoBehaviour
 
         var rt = unitInstance.GetComponent<RectTransform>();
 
+        IList<string> lastRunningHighlights = null;
+
         foreach (var cmd in commands)
         {
-            var fromPos = LogicalToVisual(cmd.From);
-            var toPos = LogicalToVisual(cmd.To);
-
-            if (fromPos != toPos)
+            if (cmd.Status == UnitStatus.Running)
             {
+                ApplyHighlights(cmd.Highlights);
+                lastRunningHighlights = cmd.Highlights;
+
+                var fromPos = LogicalToVisual(cmd.From);
+                var toPos = LogicalToVisual(cmd.To);
+
                 var elapsed = 0f;
                 var duration = CurrentStepDuration;
                 while (elapsed < duration)
@@ -404,24 +465,35 @@ public class GameSceneController : MonoBehaviour
                     rt.anchoredPosition = Vector2.Lerp(fromPos, toPos, Mathf.Clamp01(elapsed / duration));
                     yield return null;
                 }
+
+                rt.anchoredPosition = toPos;
+                ClearHighlights();
+
+                if (CurrentPause > 0f)
+                {
+                    yield return new WaitForSeconds(CurrentPause);
+                }
             }
-
-            rt.anchoredPosition = toPos;
-
-            if (cmd.Status != UnitStatus.Running)
+            else
             {
                 Debug.Log($"Simulation ended: {cmd.Status}");
+
+                if (cmd.Status == UnitStatus.Crashed && lastRunningHighlights != null)
+                {
+                    ApplyHighlights(lastRunningHighlights);
+                }
+                else if (cmd.Status == UnitStatus.Stuck)
+                {
+                    ApplyHighlights(cmd.Highlights);
+                }
+
                 playbackRoutine = null;
                 OnSimulationEnded(cmd.Status);
                 yield break;
             }
-
-            if (CurrentPause > 0f)
-            {
-                yield return new WaitForSeconds(CurrentPause);
-            }
         }
 
+        ClearHighlights();
         playbackRoutine = null;
     }
 
@@ -459,6 +531,7 @@ public class GameSceneController : MonoBehaviour
 
         ResetUnit();
         ClearStatusLabel();
+        ClearHighlights();
         HidePopup();
     }
 
@@ -549,6 +622,8 @@ public class GameSceneController : MonoBehaviour
         ClearContainer(brainContainer);
         neuronViews.Clear();
         wireVisuals.Clear();
+        baseColors.Clear();
+        currentlyHighlighted.Clear();
 
         HidePopup();
         ClearStatusLabel();
