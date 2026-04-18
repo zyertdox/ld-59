@@ -1276,6 +1276,7 @@ MonoBehaviour:
   tileSize: 80
   brainContainer: {fileID: 124573983}
   neuronPrefab: {fileID: 2111304488154965697, guid: f95e87cdfd3d79846853693b3506daf7, type: 3}
+  wirePrefab: {fileID: 8744704245898288226, guid: 4a66d5b0f8946fc45aaaae10ddb832d1, type: 3}
   neuronSize: 100
   neuronSpacing: 140
   neuronRowY: 380

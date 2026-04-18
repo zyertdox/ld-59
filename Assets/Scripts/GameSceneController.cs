@@ -21,6 +21,7 @@ public class GameSceneController : MonoBehaviour
     [Header("Brain")] [SerializeField] private RectTransform brainContainer;
 
     [SerializeField] private GameObject neuronPrefab;
+    [SerializeField] private GameObject wirePrefab;
     [SerializeField] private float neuronSize = 100f;
     [SerializeField] private float neuronSpacing = 140f;
     [SerializeField] private float neuronRowY = 380f;
@@ -31,12 +32,14 @@ public class GameSceneController : MonoBehaviour
     [SerializeField] private Toggle fastToggle;
     [SerializeField] private float fastMultiplier = 3f;
 
-    private float CurrentStepDuration => IsFast ? stepDuration / fastMultiplier : stepDuration;
-    private float CurrentPause => IsFast ? pauseBetweenSteps / fastMultiplier : pauseBetweenSteps;
-    private bool IsFast => fastToggle != null && fastToggle.isOn;
+    private readonly Dictionary<string, RectTransform> neuronViews = new();
 
     private LevelData level;
     private GameObject unitInstance;
+
+    private float CurrentStepDuration => IsFast ? stepDuration / fastMultiplier : stepDuration;
+    private float CurrentPause => IsFast ? pauseBetweenSteps / fastMultiplier : pauseBetweenSteps;
+    private bool IsFast => fastToggle != null && fastToggle.isOn;
 
     private void Start()
     {
@@ -62,6 +65,7 @@ public class GameSceneController : MonoBehaviour
             BuildBrainBoard();
 
             var brain = BuildSolvedBrain();
+            DrawWires(brain);
             var commands = Simulator.Simulate(level, brain);
             StartCoroutine(PlaySimulation(commands));
         }
@@ -181,8 +185,17 @@ public class GameSceneController : MonoBehaviour
 
     private void BuildBrainBoard()
     {
-        if (brainContainer == null || neuronPrefab == null) return;
-        if (level?.Columns == null || level.Columns.Length == 0) return;
+        if (brainContainer == null || neuronPrefab == null)
+        {
+            return;
+        }
+
+        if (level?.Columns == null || level.Columns.Length == 0)
+        {
+            return;
+        }
+
+        neuronViews.Clear();
 
         var inputs = level.Columns[0];
         var outputs = level.Columns[level.Columns.Length - 1];
@@ -193,7 +206,10 @@ public class GameSceneController : MonoBehaviour
 
     private void SpawnNeuronRow(NeuronNode[] row, float y)
     {
-        if (row == null) return;
+        if (row == null)
+        {
+            return;
+        }
 
         var startX = -(row.Length - 1) * neuronSpacing * 0.5f;
 
@@ -212,7 +228,51 @@ public class GameSceneController : MonoBehaviour
             var img = go.GetComponent<Image>();
             var label = go.GetComponentInChildren<TMP_Text>();
             ConfigureNeuron(node, img, label);
+
+            neuronViews[node.Id] = rt;
         }
+    }
+
+    private void DrawWires(BrainData brain)
+    {
+        if (brainContainer == null || wirePrefab == null || brain == null)
+        {
+            return;
+        }
+
+        foreach (var wire in brain.Wires)
+        {
+            if (!neuronViews.TryGetValue(wire.From.Id, out var fromRt))
+            {
+                continue;
+            }
+
+            if (!neuronViews.TryGetValue(wire.To.Id, out var toRt))
+            {
+                continue;
+            }
+
+            DrawWire(wire.Id, fromRt.anchoredPosition, toRt.anchoredPosition);
+        }
+    }
+
+    private void DrawWire(string id, Vector2 fromPos, Vector2 toPos)
+    {
+        var go = Instantiate(wirePrefab, brainContainer);
+        go.name = $"Wire_{id}";
+        go.transform.SetAsFirstSibling();
+
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = new Vector2(0f, 0.5f);
+        rt.anchoredPosition = fromPos;
+
+        var delta = toPos - fromPos;
+        var length = delta.magnitude;
+        var angle = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
+
+        rt.sizeDelta = new Vector2(length, rt.sizeDelta.y);
+        rt.localEulerAngles = new Vector3(0f, 0f, angle);
     }
 
     private static void ConfigureNeuron(NeuronNode node, Image img, TMP_Text label)
@@ -220,31 +280,53 @@ public class GameSceneController : MonoBehaviour
         switch (node)
         {
             case InputNode input:
-                if (img != null) img.color = ColorOf(input.TriggerColor);
-                if (label != null) label.text = InputLabel(input.TriggerColor);
+                if (img != null)
+                {
+                    img.color = ColorOf(input.TriggerColor);
+                }
+
+                if (label != null)
+                {
+                    label.text = InputLabel(input.TriggerColor);
+                }
+
                 break;
             case OutputNode output:
-                if (img != null) img.color = new Color(0.75f, 0.75f, 0.8f);
-                if (label != null) label.text = OutputArrow(output.Code);
+                if (img != null)
+                {
+                    img.color = new Color(0.75f, 0.75f, 0.8f);
+                }
+
+                if (label != null)
+                {
+                    label.text = OutputArrow(output.Code);
+                }
+
                 break;
         }
     }
 
-    private static string InputLabel(TileColor c) => c switch
+    private static string InputLabel(TileColor c)
     {
-        TileColor.Red => "R",
-        TileColor.Green => "G",
-        TileColor.Blue => "B",
-        _ => "?"
-    };
+        return c switch
+        {
+            TileColor.Red => "R",
+            TileColor.Green => "G",
+            TileColor.Blue => "B",
+            _ => "?"
+        };
+    }
 
-    private static string OutputArrow(char code) => code switch
+    private static string OutputArrow(char code)
     {
-        'F' => "↑",
-        'U' => "↗",
-        'D' => "↖",
-        _ => "?"
-    };
+        return code switch
+        {
+            'F' => "↑",
+            'U' => "↗",
+            'D' => "↖",
+            _ => "?"
+        };
+    }
 
     private BrainData BuildSolvedBrain()
     {
@@ -264,6 +346,7 @@ public class GameSceneController : MonoBehaviour
                 Connect(brain, TileColor.Blue, 'D');
                 break;
         }
+
         return brain;
     }
 
@@ -271,7 +354,11 @@ public class GameSceneController : MonoBehaviour
     {
         var input = FindInput(color);
         var output = FindOutput(outputCode);
-        if (input == null || output == null) return;
+        if (input == null || output == null)
+        {
+            return;
+        }
+
         brain.Wires.Add(new Wire(Guid.NewGuid().ToString(), input, output));
     }
 
@@ -279,8 +366,13 @@ public class GameSceneController : MonoBehaviour
     {
         foreach (var column in level.Columns)
         foreach (var node in column)
+        {
             if (node is InputNode input && input.TriggerColor == color)
+            {
                 return input;
+            }
+        }
+
         return null;
     }
 
@@ -288,14 +380,23 @@ public class GameSceneController : MonoBehaviour
     {
         foreach (var column in level.Columns)
         foreach (var node in column)
+        {
             if (node is OutputNode output && output.Code == code)
+            {
                 return output;
+            }
+        }
+
         return null;
     }
 
     private IEnumerator PlaySimulation(List<MoveCommand> commands)
     {
-        if (unitInstance == null) yield break;
+        if (unitInstance == null)
+        {
+            yield break;
+        }
+
         var rt = unitInstance.GetComponent<RectTransform>();
 
         foreach (var cmd in commands)
@@ -325,7 +426,9 @@ public class GameSceneController : MonoBehaviour
             }
 
             if (CurrentPause > 0f)
+            {
                 yield return new WaitForSeconds(CurrentPause);
+            }
         }
     }
 
