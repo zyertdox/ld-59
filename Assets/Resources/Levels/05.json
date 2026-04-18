@@ -1,14 +1,14 @@
 {
-  "id": "03",
-  "name": "Zigzag",
+  "id": "05",
+  "name": "High Ground",
   "width": 10,
   "height": 5,
   "tiles": [
-    "..........",
-    "..B.....B.",
-    "RG.RB.RG.R",
-    ".....G....",
-    ".........."
+    "G.B.R.G.B.",
+    "RRGGBRBBGR",
+    "RBRBGGRBGR",
+    "G.R.B.G.R.",
+    ".B.G.R.B.G"
   ],
   "start": { "x": 0, "y": 2 },
   "exit":  { "x": 9, "y": 2 },

@@ -2,6 +2,8 @@
   "levels": [
     { "id": "01", "name": "First Steps" },
     { "id": "02", "name": "Two Colors" },
-    { "id": "03", "name": "Zigzag" }
+    { "id": "03", "name": "Zigzag" },
+    { "id": "04", "name": "Mirrored Zigzag" },
+    { "id": "05", "name": "High Ground" }
   ]
 }

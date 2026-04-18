@@ -1,14 +1,14 @@
 {
-  "id": "03",
-  "name": "Zigzag",
+  "id": "04",
+  "name": "Mirrored Zigzag",
   "width": 10,
   "height": 5,
   "tiles": [
-    "..........",
-    "..B.....B.",
-    "RG.RB.RG.R",
-    ".....G....",
-    ".........."
+    "R.G.B.G.R.",
+    ".G.R.B.R.G",
+    "GBRGRGGBBG",
+    "BGR.BGG.R.",
+    ".G.B.R.G.B"
   ],
   "start": { "x": 0, "y": 2 },
   "exit":  { "x": 9, "y": 2 },
