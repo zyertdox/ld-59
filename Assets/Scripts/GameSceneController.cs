@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -35,10 +36,13 @@ public class GameSceneController : MonoBehaviour
     [SerializeField] private float fastMultiplier = 3f;
 
     private readonly Dictionary<string, RectTransform> neuronViews = new();
+    private readonly Dictionary<string, GameObject> wireVisuals = new();
     private BrainData brain;
+    private NeuronView dragSource;
 
     private LevelData level;
     private Coroutine playbackRoutine;
+    private GameObject tempWireGo;
     private GameObject unitInstance;
 
     private float CurrentStepDuration => IsFast ? stepDuration / fastMultiplier : stepDuration;
@@ -78,7 +82,7 @@ public class GameSceneController : MonoBehaviour
             SpawnUnit();
             BuildBrainBoard();
 
-            brain = BuildSolvedBrain();
+            brain = new BrainData();
             DrawWires(brain);
         }
     }
@@ -241,6 +245,15 @@ public class GameSceneController : MonoBehaviour
             var label = go.GetComponentInChildren<TMP_Text>();
             ConfigureNeuron(node, img, label);
 
+            var view = go.GetComponent<NeuronView>();
+            if (view == null)
+            {
+                view = go.AddComponent<NeuronView>();
+            }
+
+            view.Node = node;
+            view.Controller = this;
+
             neuronViews[node.Id] = rt;
         }
     }
@@ -251,6 +264,8 @@ public class GameSceneController : MonoBehaviour
         {
             return;
         }
+
+        wireVisuals.Clear();
 
         foreach (var wire in brain.Wires)
         {
@@ -264,11 +279,12 @@ public class GameSceneController : MonoBehaviour
                 continue;
             }
 
-            DrawWire(wire.Id, fromRt.anchoredPosition, toRt.anchoredPosition);
+            var go = DrawWire(wire.Id, fromRt.anchoredPosition, toRt.anchoredPosition);
+            wireVisuals[wire.Id] = go;
         }
     }
 
-    private void DrawWire(string id, Vector2 fromPos, Vector2 toPos)
+    private GameObject DrawWire(string id, Vector2 fromPos, Vector2 toPos)
     {
         var go = Instantiate(wirePrefab, brainContainer);
         go.name = $"Wire_{id}";
@@ -285,6 +301,7 @@ public class GameSceneController : MonoBehaviour
 
         rt.sizeDelta = new Vector2(length, rt.sizeDelta.y);
         rt.localEulerAngles = new Vector3(0f, 0f, angle);
+        return go;
     }
 
     private static void ConfigureNeuron(NeuronNode node, Image img, TMP_Text label)
@@ -338,68 +355,6 @@ public class GameSceneController : MonoBehaviour
             'D' => "↖",
             _ => "?"
         };
-    }
-
-    private BrainData BuildSolvedBrain()
-    {
-        var brain = new BrainData();
-        switch (level.Id)
-        {
-            case "01":
-                Connect(brain, TileColor.Red, 'F');
-                break;
-            case "02":
-                Connect(brain, TileColor.Red, 'F');
-                Connect(brain, TileColor.Green, 'F');
-                break;
-            case "03":
-                Connect(brain, TileColor.Red, 'F');
-                Connect(brain, TileColor.Green, 'U');
-                Connect(brain, TileColor.Blue, 'D');
-                break;
-        }
-
-        return brain;
-    }
-
-    private void Connect(BrainData brain, TileColor color, char outputCode)
-    {
-        var input = FindInput(color);
-        var output = FindOutput(outputCode);
-        if (input == null || output == null)
-        {
-            return;
-        }
-
-        brain.Wires.Add(new Wire(Guid.NewGuid().ToString(), input, output));
-    }
-
-    private InputNode FindInput(TileColor color)
-    {
-        foreach (var column in level.Columns)
-        foreach (var node in column)
-        {
-            if (node is InputNode input && input.TriggerColor == color)
-            {
-                return input;
-            }
-        }
-
-        return null;
-    }
-
-    private OutputNode FindOutput(char code)
-    {
-        foreach (var column in level.Columns)
-        foreach (var node in column)
-        {
-            if (node is OutputNode output && output.Code == code)
-            {
-                return output;
-            }
-        }
-
-        return null;
     }
 
     private IEnumerator PlaySimulation(List<MoveCommand> commands)
@@ -494,5 +449,141 @@ public class GameSceneController : MonoBehaviour
     private static void OnFastToggleChanged(bool isOn)
     {
         GameSession.FastPlayback = isOn;
+    }
+
+    public void OnNeuronDragStart(NeuronView source, PointerEventData eventData)
+    {
+        if (source.Node is not InputNode)
+        {
+            return;
+        }
+
+        if (brain == null)
+        {
+            return;
+        }
+
+        dragSource = source;
+
+        RemoveWireFromInput(source.Node.Id);
+
+        tempWireGo = Instantiate(wirePrefab, brainContainer);
+        tempWireGo.name = "TempWire";
+        tempWireGo.transform.SetAsFirstSibling();
+
+        var tempImg = tempWireGo.GetComponent<Image>();
+        if (tempImg != null)
+        {
+            var c = tempImg.color;
+            c.a = 0.5f;
+            tempImg.color = c;
+        }
+
+        UpdateTempWire(eventData);
+    }
+
+    public void OnNeuronDrag(NeuronView source, PointerEventData eventData)
+    {
+        if (dragSource != source)
+        {
+            return;
+        }
+
+        UpdateTempWire(eventData);
+    }
+
+    public void OnNeuronDragEnd(NeuronView source, PointerEventData eventData)
+    {
+        if (dragSource != source)
+        {
+            return;
+        }
+
+        var target = FindNeuronUnderPointer(eventData);
+
+        if (target != null && target.Node is OutputNode output && dragSource.Node is InputNode input)
+        {
+            var wire = new Wire(Guid.NewGuid().ToString(), input, output);
+            brain.Wires.Add(wire);
+
+            if (neuronViews.TryGetValue(input.Id, out var fromRt) &&
+                neuronViews.TryGetValue(output.Id, out var toRt))
+            {
+                var go = DrawWire(wire.Id, fromRt.anchoredPosition, toRt.anchoredPosition);
+                wireVisuals[wire.Id] = go;
+            }
+        }
+
+        if (tempWireGo != null)
+        {
+            Destroy(tempWireGo);
+        }
+
+        tempWireGo = null;
+        dragSource = null;
+    }
+
+    private void RemoveWireFromInput(string inputId)
+    {
+        for (var i = brain.Wires.Count - 1; i >= 0; i--)
+        {
+            var w = brain.Wires[i];
+            if (w.From.Id != inputId)
+            {
+                continue;
+            }
+
+            if (wireVisuals.TryGetValue(w.Id, out var go))
+            {
+                Destroy(go);
+                wireVisuals.Remove(w.Id);
+            }
+
+            brain.Wires.RemoveAt(i);
+        }
+    }
+
+    private void UpdateTempWire(PointerEventData eventData)
+    {
+        if (tempWireGo == null || dragSource == null)
+        {
+            return;
+        }
+
+        if (!neuronViews.TryGetValue(dragSource.Node.Id, out var fromRt))
+        {
+            return;
+        }
+
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            brainContainer, eventData.position, eventData.pressEventCamera, out var pointerLocal);
+
+        var rt = tempWireGo.GetComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = new Vector2(0f, 0.5f);
+        rt.anchoredPosition = fromRt.anchoredPosition;
+
+        var delta = pointerLocal - fromRt.anchoredPosition;
+        var length = delta.magnitude;
+        var angle = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
+
+        rt.sizeDelta = new Vector2(length, rt.sizeDelta.y);
+        rt.localEulerAngles = new Vector3(0f, 0f, angle);
+    }
+
+    private NeuronView FindNeuronUnderPointer(PointerEventData eventData)
+    {
+        var results = new List<RaycastResult>();
+        EventSystem.current.RaycastAll(eventData, results);
+        foreach (var r in results)
+        {
+            var view = r.gameObject.GetComponentInParent<NeuronView>();
+            if (view != null)
+            {
+                return view;
+            }
+        }
+
+        return null;
     }
 }
