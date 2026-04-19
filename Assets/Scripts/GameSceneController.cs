@@ -79,6 +79,7 @@ public class GameSceneController : MonoBehaviour
     private void Start()
     {
         AudioManager.GetOrCreate();
+        CursorManager.GetOrCreate();
 
         if (backButton != null)
         {

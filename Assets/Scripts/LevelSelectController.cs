@@ -18,6 +18,7 @@ public class LevelSelectController : MonoBehaviour
     private void Start()
     {
         AudioManager.GetOrCreate();
+        CursorManager.GetOrCreate();
 
         if (levelName != null)
         {
@@ -67,6 +68,10 @@ public class LevelSelectController : MonoBehaviour
         if (button != null)
         {
             button.onClick.AddListener(() => OnLevelClicked(entry.id));
+            if (button.GetComponent<ButtonCursorHover>() == null)
+            {
+                button.gameObject.AddComponent<ButtonCursorHover>();
+            }
         }
 
         var trigger = instance.GetComponent<EventTrigger>();

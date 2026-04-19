@@ -12,6 +12,7 @@ public class MainMenuController : MonoBehaviour
     void Start()
     {
         var audio = AudioManager.GetOrCreate();
+        CursorManager.GetOrCreate();
 
         if (musicSlider != null)
         {
