@@ -34,8 +34,12 @@ public class GameSceneController : MonoBehaviour
     [SerializeField] private float neuronSpacing = 140f;
     [SerializeField] private float neuronRowY = 380f;
     [SerializeField] private float neuronRowPadding = 40f;
+    [SerializeField] private float traceStagger = 70f;
     [SerializeField] private Sprite arrowSprite;
     [SerializeField] private Sprite ledSprite;
+    [SerializeField] private Sprite jumperSprite;
+    [SerializeField] private float jumperLength = 36f;
+    [SerializeField] private float jumperThickness = 18f;
 
     private RectTransform NeuronParent => neuronField != null ? neuronField : brainContainer;
 
@@ -55,6 +59,7 @@ public class GameSceneController : MonoBehaviour
 
     private readonly Dictionary<string, RectTransform> neuronViews = new();
     private readonly Dictionary<string, GameObject> wireVisuals = new();
+    private readonly List<GameObject> jumperVisuals = new();
     private readonly Dictionary<string, Color> baseColors = new();
     private readonly HashSet<string> currentlyHighlighted = new();
 
@@ -352,45 +357,225 @@ public class GameSceneController : MonoBehaviour
 
         wireVisuals.Clear();
 
+        var total = brain.Wires.Count;
+        for (var i = 0; i < brain.Wires.Count; i++)
+        {
+            var wire = brain.Wires[i];
+            if (!neuronViews.TryGetValue(wire.From.Id, out var fromRt)) continue;
+            if (!neuronViews.TryGetValue(wire.To.Id, out var toRt)) continue;
+
+            var go = DrawWire(wire.Id, fromRt.anchoredPosition, toRt.anchoredPosition, i, total);
+            wireVisuals[wire.Id] = go;
+        }
+
+        DrawJumpers(brain);
+    }
+
+    private void DrawJumpers(BrainData brain)
+    {
+        foreach (var j in jumperVisuals)
+        {
+            if (j != null) Destroy(j);
+        }
+        jumperVisuals.Clear();
+
+        if (jumperSprite == null || brain?.Wires == null || brain.Wires.Count < 2) return;
+
+        var paths = new List<(List<Vector2Int> path, float fromY, float toY)>();
         foreach (var wire in brain.Wires)
         {
-            if (!neuronViews.TryGetValue(wire.From.Id, out var fromRt))
+            if (!neuronViews.TryGetValue(wire.From.Id, out var fromRt) ||
+                !neuronViews.TryGetValue(wire.To.Id, out var toRt))
             {
+                paths.Add((null, 0, 0));
                 continue;
             }
 
-            if (!neuronViews.TryGetValue(wire.To.Id, out var toRt))
-            {
-                continue;
-            }
+            var fromCol = GridColFromX(fromRt.anchoredPosition.x);
+            var toCol = GridColFromX(toRt.anchoredPosition.x);
+            paths.Add((GetWirePath(fromCol, toCol), fromRt.anchoredPosition.y, toRt.anchoredPosition.y));
+        }
 
-            var go = DrawWire(wire.Id, fromRt.anchoredPosition, toRt.anchoredPosition);
-            wireVisuals[wire.Id] = go;
+        for (var i = 0; i < paths.Count; i++)
+        {
+            var a = paths[i];
+            if (a.path == null) continue;
+            for (var j = i + 1; j < paths.Count; j++)
+            {
+                var b = paths[j];
+                if (b.path == null) continue;
+                PlaceJumpersBetween(a.path, b.path, a.fromY, a.toY);
+            }
         }
     }
 
-    private GameObject DrawWire(string id, Vector2 fromPos, Vector2 toPos)
+    private void PlaceJumpersBetween(List<Vector2Int> pathA, List<Vector2Int> pathB, float fromY, float toY)
     {
-        var go = Instantiate(wirePrefab, NeuronParent);
-        go.name = $"Wire_{id}";
-        go.transform.SetAsFirstSibling();
+        for (var i = 0; i < pathA.Count - 1; i++)
+        {
+            var a1 = pathA[i];
+            var a2 = pathA[i + 1];
+            for (var j = 0; j < pathB.Count - 1; j++)
+            {
+                var b1 = pathB[j];
+                var b2 = pathB[j + 1];
 
+                if (!TryGetCrossing(a1, a2, b1, b2, out var cross, out var overheadHorizontal)) continue;
+
+                var pixel = new Vector2(GridXToPixel(cross.x), GridYToPixel(cross.y, fromY, toY));
+                SpawnJumper(pixel, overheadHorizontal);
+            }
+        }
+    }
+
+    private static bool TryGetCrossing(Vector2Int a1, Vector2Int a2, Vector2Int b1, Vector2Int b2, out Vector2Int cross, out bool overheadHorizontal)
+    {
+        cross = default;
+        overheadHorizontal = false;
+
+        var aHoriz = a1.y == a2.y;
+        var bHoriz = b1.y == b2.y;
+        if (aHoriz == bHoriz) return false;
+
+        var hSegA = aHoriz ? a1 : b1;
+        var hSegB = aHoriz ? a2 : b2;
+        var vSegA = aHoriz ? b1 : a1;
+        var vSegB = aHoriz ? b2 : a2;
+
+        var hY = hSegA.y;
+        var hXmin = Mathf.Min(hSegA.x, hSegB.x);
+        var hXmax = Mathf.Max(hSegA.x, hSegB.x);
+        var vX = vSegA.x;
+        var vYmin = Mathf.Min(vSegA.y, vSegB.y);
+        var vYmax = Mathf.Max(vSegA.y, vSegB.y);
+
+        if (vX <= hXmin || vX >= hXmax) return false;
+        if (hY <= vYmin || hY >= vYmax) return false;
+
+        cross = new Vector2Int(vX, hY);
+        overheadHorizontal = !aHoriz;
+        return true;
+    }
+
+    private void SpawnJumper(Vector2 pixelPoint, bool overheadHorizontal)
+    {
+        var go = new GameObject("Jumper");
+        go.AddComponent<CanvasRenderer>();
+        var rt = go.AddComponent<RectTransform>();
+        var img = go.AddComponent<Image>();
+
+        img.sprite = jumperSprite;
+        img.color = Color.white;
+        img.raycastTarget = false;
+
+        rt.SetParent(NeuronParent, false);
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = pixelPoint;
+        rt.sizeDelta = new Vector2(jumperLength, jumperThickness);
+        rt.localEulerAngles = Vector3.zero;
+
+        jumperVisuals.Add(go);
+    }
+
+    private void RedrawAllWires()
+    {
+        foreach (var go in wireVisuals.Values)
+        {
+            if (go != null) Destroy(go);
+        }
+        wireVisuals.Clear();
+        DrawWires(brain);
+    }
+
+    private GameObject DrawWire(string id, Vector2 fromPos, Vector2 toPos, int index, int total)
+    {
+        var trace = new GameObject($"Wire_{id}");
+        var rt = trace.AddComponent<RectTransform>();
+        rt.SetParent(NeuronParent, false);
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = Vector2.zero;
+        rt.sizeDelta = Vector2.zero;
+        trace.transform.SetAsFirstSibling();
+
+        var fromCol = GridColFromX(fromPos.x);
+        var toCol = GridColFromX(toPos.x);
+        var path = GetWirePath(fromCol, toCol);
+
+        if (path == null)
+        {
+            SpawnTraceSegment(trace.transform, fromPos, toPos);
+        }
+        else
+        {
+            var pixels = new List<Vector2>(path.Count);
+            foreach (var gp in path)
+            {
+                pixels.Add(new Vector2(GridXToPixel(gp.x), GridYToPixel(gp.y, fromPos.y, toPos.y)));
+            }
+
+            for (var i = 0; i < pixels.Count - 1; i++)
+            {
+                SpawnTraceSegment(trace.transform, pixels[i], pixels[i + 1]);
+            }
+        }
+
+        baseColors[id] = Palette.PcbCopper;
+        return trace;
+    }
+
+    private int GridColFromX(float x)
+    {
+        return Mathf.RoundToInt(x / neuronSpacing * 3f + 3f);
+    }
+
+    private float GridXToPixel(int col)
+    {
+        return neuronSpacing * (col - 3) / 3f;
+    }
+
+    private static float GridYToPixel(int row, float fromY, float toY)
+    {
+        return fromY + (toY - fromY) * row / 6f;
+    }
+
+    private static List<Vector2Int> GetWirePath(int fromCol, int toCol)
+    {
+        return (fromCol, toCol) switch
+        {
+            (0, 0) => new List<Vector2Int> { new(0, 0), new(0, 6) },
+            (0, 3) => new List<Vector2Int> { new(0, 0), new(0, 3), new(2, 3), new(2, 5), new(3, 5), new(3, 6) },
+            (0, 6) => new List<Vector2Int> { new(0, 0), new(0, 1), new(5, 1), new(5, 5), new(5, 6), new(6, 6) },
+            (3, 0) => new List<Vector2Int> { new(3, 0), new(3, 4), new(0, 4), new(0, 6) },
+            (3, 3) => new List<Vector2Int> { new(3, 0), new(3, 6) },
+            (3, 6) => new List<Vector2Int> { new(3, 0), new(3, 4), new(6, 4), new(6, 6) },
+            (6, 0) => new List<Vector2Int> { new(6, 0), new(6, 2), new(1, 2), new(1, 5), new(0, 5), new(0, 6) },
+            (6, 3) => new List<Vector2Int> { new(6, 0), new(6, 3), new(4, 3), new(4, 5), new(3, 5), new(3, 6) },
+            (6, 6) => new List<Vector2Int> { new(6, 0), new(6, 6) },
+            _ => null
+        };
+    }
+
+    private void SpawnTraceSegment(Transform parent, Vector2 a, Vector2 b)
+    {
+        var delta = b - a;
+        var length = delta.magnitude;
+        if (length < 0.5f) return;
+
+        var go = Instantiate(wirePrefab, parent);
         var rt = go.GetComponent<RectTransform>();
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
         rt.pivot = new Vector2(0f, 0.5f);
-        rt.anchoredPosition = fromPos;
+        rt.anchoredPosition = a;
 
-        var delta = toPos - fromPos;
-        var length = delta.magnitude;
         var angle = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
 
         rt.sizeDelta = new Vector2(length, rt.sizeDelta.y);
         rt.localEulerAngles = new Vector3(0f, 0f, angle);
 
         var img = go.GetComponent<Image>();
-        if (img != null) baseColors[id] = img.color;
-
-        return go;
+        if (img != null) img.color = Palette.PcbCopper;
     }
 
     private void ConfigureNeuron(NeuronNode node, Image chipImg, Image iconImg, TMP_Text label)
@@ -476,7 +661,19 @@ public class GameSceneController : MonoBehaviour
         }
         else if (wireVisuals.TryGetValue(id, out var wireGo))
         {
-            img = wireGo.GetComponent<Image>();
+            var images = wireGo.GetComponentsInChildren<Image>(true);
+            foreach (var traceImg in images)
+            {
+                if (active)
+                {
+                    traceImg.color = Palette.Highlight;
+                }
+                else if (baseColors.TryGetValue(id, out var baseColor))
+                {
+                    traceImg.color = baseColor;
+                }
+            }
+            return;
         }
 
         if (img == null) return;
@@ -697,6 +894,7 @@ public class GameSceneController : MonoBehaviour
         ClearContainer(NeuronParent);
         neuronViews.Clear();
         wireVisuals.Clear();
+        jumperVisuals.Clear();
         baseColors.Clear();
         currentlyHighlighted.Clear();
 
@@ -820,13 +1018,6 @@ public class GameSceneController : MonoBehaviour
         {
             var wire = new Wire(Guid.NewGuid().ToString(), input, output);
             brain.Wires.Add(wire);
-
-            if (neuronViews.TryGetValue(input.Id, out var fromRt) &&
-                neuronViews.TryGetValue(output.Id, out var toRt))
-            {
-                var go = DrawWire(wire.Id, fromRt.anchoredPosition, toRt.anchoredPosition);
-                wireVisuals[wire.Id] = go;
-            }
         }
 
         if (tempWireGo != null)
@@ -836,6 +1027,8 @@ public class GameSceneController : MonoBehaviour
 
         tempWireGo = null;
         dragSource = null;
+
+        RedrawAllWires();
     }
 
     private void RemoveWireFromInput(string inputId)
