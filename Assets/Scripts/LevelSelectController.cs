@@ -61,7 +61,7 @@ public class LevelSelectController : MonoBehaviour
             text.text = entry.id;
         }
 
-        var button = instance.GetComponent<Button>();
+        var button = instance.GetComponentInChildren<Button>();
         if (button != null)
         {
             button.onClick.AddListener(() => OnLevelClicked(entry.id));
