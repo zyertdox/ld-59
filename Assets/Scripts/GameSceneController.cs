@@ -27,13 +27,17 @@ public class GameSceneController : MonoBehaviour
 
     [Header("Brain")] [SerializeField] private RectTransform brainContainer;
 
+    [SerializeField] private RectTransform neuronField;
     [SerializeField] private GameObject neuronPrefab;
     [SerializeField] private GameObject wirePrefab;
     [SerializeField] private float neuronSize = 100f;
     [SerializeField] private float neuronSpacing = 140f;
     [SerializeField] private float neuronRowY = 380f;
+    [SerializeField] private float neuronRowPadding = 40f;
     [SerializeField] private Sprite arrowSprite;
     [SerializeField] private Sprite ledSprite;
+
+    private RectTransform NeuronParent => neuronField != null ? neuronField : brainContainer;
 
     [Header("Playback")] [SerializeField] private float stepDuration = 0.35f;
 
@@ -270,7 +274,7 @@ public class GameSceneController : MonoBehaviour
 
     private void BuildBrainBoard()
     {
-        if (brainContainer == null || neuronPrefab == null)
+        if (NeuronParent == null || neuronPrefab == null)
         {
             return;
         }
@@ -285,8 +289,17 @@ public class GameSceneController : MonoBehaviour
         var inputs = level.Columns[0];
         var outputs = level.Columns[level.Columns.Length - 1];
 
-        SpawnNeuronRow(inputs, -neuronRowY);
-        SpawnNeuronRow(outputs, neuronRowY);
+        var rowY = CalculateRowY();
+
+        SpawnNeuronRow(inputs, -rowY);
+        SpawnNeuronRow(outputs, rowY);
+    }
+
+    private float CalculateRowY()
+    {
+        if (neuronField == null) return neuronRowY;
+        var fieldHeight = neuronField.rect.height;
+        return fieldHeight * 0.5f - neuronSize * 0.5f - neuronRowPadding;
     }
 
     private void SpawnNeuronRow(NeuronNode[] row, float y)
@@ -301,7 +314,7 @@ public class GameSceneController : MonoBehaviour
         for (var i = 0; i < row.Length; i++)
         {
             var node = row[i];
-            var go = Instantiate(neuronPrefab, brainContainer);
+            var go = Instantiate(neuronPrefab, NeuronParent);
             go.name = $"Neuron_{node.Id}";
 
             var rt = go.GetComponent<RectTransform>();
@@ -332,7 +345,7 @@ public class GameSceneController : MonoBehaviour
 
     private void DrawWires(BrainData brain)
     {
-        if (brainContainer == null || wirePrefab == null || brain == null)
+        if (NeuronParent == null || wirePrefab == null || brain == null)
         {
             return;
         }
@@ -358,7 +371,7 @@ public class GameSceneController : MonoBehaviour
 
     private GameObject DrawWire(string id, Vector2 fromPos, Vector2 toPos)
     {
-        var go = Instantiate(wirePrefab, brainContainer);
+        var go = Instantiate(wirePrefab, NeuronParent);
         go.name = $"Wire_{id}";
         go.transform.SetAsFirstSibling();
 
@@ -568,12 +581,16 @@ public class GameSceneController : MonoBehaviour
 
         if (playbackRoutine != null)
         {
-            return;
+            StopCoroutine(playbackRoutine);
+            playbackRoutine = null;
         }
 
         ResetUnit();
         ClearStatusLabel();
+        ClearHighlights();
         HidePopup();
+        unitView?.SetState(UnitView.State.Thinking);
+
         var commands = Simulator.Simulate(level, brain);
         playbackRoutine = StartCoroutine(PlaySimulation(commands));
     }
@@ -677,7 +694,7 @@ public class GameSceneController : MonoBehaviour
         unitInstance = null;
 
         ClearContainer(fieldContainer);
-        ClearContainer(brainContainer);
+        ClearContainer(NeuronParent);
         neuronViews.Clear();
         wireVisuals.Clear();
         baseColors.Clear();
@@ -765,7 +782,7 @@ public class GameSceneController : MonoBehaviour
 
         RemoveWireFromInput(source.Node.Id);
 
-        tempWireGo = Instantiate(wirePrefab, brainContainer);
+        tempWireGo = Instantiate(wirePrefab, NeuronParent);
         tempWireGo.name = "TempWire";
         tempWireGo.transform.SetAsFirstSibling();
 
@@ -854,7 +871,7 @@ public class GameSceneController : MonoBehaviour
         }
 
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            brainContainer, eventData.position, eventData.pressEventCamera, out var pointerLocal);
+            NeuronParent, eventData.position, eventData.pressEventCamera, out var pointerLocal);
 
         var rt = tempWireGo.GetComponent<RectTransform>();
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
