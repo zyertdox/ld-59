@@ -378,31 +378,23 @@ public class GameSceneController : MonoBehaviour
 
     private static void ConfigureNeuron(NeuronNode node, Image img, TMP_Text label)
     {
+        if (img != null) img.color = Color.white;
+
         switch (node)
         {
             case InputNode input:
-                if (img != null)
-                {
-                    img.color = ColorOf(input.TriggerColor);
-                }
-
                 if (label != null)
                 {
                     label.text = InputLabel(input.TriggerColor);
+                    label.color = ColorOf(input.TriggerColor);
                 }
-
                 break;
             case OutputNode output:
-                if (img != null)
-                {
-                    img.color = new Color(0.75f, 0.75f, 0.8f);
-                }
-
                 if (label != null)
                 {
                     label.text = OutputArrow(output.Code);
+                    label.color = Palette.PcbGold;
                 }
-
                 break;
         }
     }

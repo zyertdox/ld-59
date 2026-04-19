@@ -27,6 +27,14 @@ public static class Palette
     public static readonly Color TileOutline = Hex("#1F2A3A");
     public static readonly Color TileCrack = Hex("#1F2A3A");
 
+    // PCB theme
+    public static readonly Color PcbGreen = Hex("#0F5A3F");
+    public static readonly Color PcbGreenDark = Hex("#0A3E2B");
+    public static readonly Color PcbCopper = Hex("#D4A055");
+    public static readonly Color PcbGold = Hex("#E8C27A");
+    public static readonly Color PcbBodyDark = Hex("#1A1A1A");
+    public static readonly Color PcbSilver = Hex("#C5C5C5");
+
     // Glow alpha multiplier (0..1)
     public const float GlowAlpha = 0.35f;
     public const float GlowScale = 1.6f;
