@@ -15,6 +15,8 @@ public class LevelSelectController : MonoBehaviour
     [SerializeField] private string mainMenuSceneName = "MainMenu";
     [SerializeField] private string gameSceneName = "Game";
 
+    static readonly Color LockedColor = new Color(0.56f, 0.56f, 0.56f, 1f);
+
     private void Start()
     {
         AudioManager.GetOrCreate();
@@ -48,13 +50,14 @@ public class LevelSelectController : MonoBehaviour
             return;
         }
 
-        foreach (var entry in manifest.levels)
+        var unlocked = GameSession.UnlockedLevels;
+        for (var i = 0; i < manifest.levels.Length; i++)
         {
-            SpawnButton(entry);
+            SpawnButton(manifest.levels[i], i >= unlocked);
         }
     }
 
-    private void SpawnButton(LevelEntry entry)
+    private void SpawnButton(LevelEntry entry, bool locked)
     {
         var instance = Instantiate(buttonPrefab, container);
 
@@ -62,15 +65,27 @@ public class LevelSelectController : MonoBehaviour
         if (text != null)
         {
             text.text = entry.id;
+            if (locked)
+            {
+                text.color = LockedColor;
+                text.fontStyle |= FontStyles.Strikethrough;
+            }
         }
 
         var button = instance.GetComponentInChildren<Button>();
         if (button != null)
         {
-            button.onClick.AddListener(() => OnLevelClicked(entry.id));
-            if (button.GetComponent<ButtonCursorHover>() == null)
+            if (locked)
             {
-                button.gameObject.AddComponent<ButtonCursorHover>();
+                button.interactable = false;
+            }
+            else
+            {
+                button.onClick.AddListener(() => OnLevelClicked(entry.id));
+                if (button.GetComponent<ButtonCursorHover>() == null)
+                {
+                    button.gameObject.AddComponent<ButtonCursorHover>();
+                }
             }
         }
 
@@ -81,19 +96,27 @@ public class LevelSelectController : MonoBehaviour
         }
 
         var enter = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
-        enter.callback.AddListener(_ => SetLevelName(entry.name));
+        enter.callback.AddListener(_ => SetLevelName(entry.name, locked));
         trigger.triggers.Add(enter);
 
         var exit = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
-        exit.callback.AddListener(_ => SetLevelName(string.Empty));
+        exit.callback.AddListener(_ => SetLevelName(string.Empty, false));
         trigger.triggers.Add(exit);
     }
 
-    private void SetLevelName(string value)
+    private void SetLevelName(string value, bool locked)
     {
-        if (levelName != null)
+        if (levelName == null) return;
+        levelName.text = value;
+        if (locked)
         {
-            levelName.text = value;
+            levelName.color = LockedColor;
+            levelName.fontStyle |= FontStyles.Strikethrough;
+        }
+        else
+        {
+            levelName.color = Palette.PcbCopper;
+            levelName.fontStyle &= ~FontStyles.Strikethrough;
         }
     }
 

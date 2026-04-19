@@ -878,6 +878,11 @@ public class GameSceneController : MonoBehaviour
 
     private void ShowWin()
     {
+        var idx = Array.IndexOf(levelOrder, GameSession.CurrentLevelId);
+        if (idx >= 0)
+        {
+            GameSession.UnlockedLevels = Mathf.Max(GameSession.UnlockedLevels, idx + 2);
+        }
         if (winPopup != null) winPopup.SetActive(true);
         if (winLabel != null) winLabel.text = "You Won!";
     }
