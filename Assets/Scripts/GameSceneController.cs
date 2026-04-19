@@ -59,6 +59,7 @@ public class GameSceneController : MonoBehaviour
     private Coroutine playbackRoutine;
     private GameObject tempWireGo;
     private GameObject unitInstance;
+    private UnitView unitView;
 
     private float CurrentStepDuration => IsFast ? stepDuration / fastMultiplier : stepDuration;
     private float CurrentPause => IsFast ? pauseBetweenSteps / fastMultiplier : pauseBetweenSteps;
@@ -229,12 +230,13 @@ public class GameSceneController : MonoBehaviour
 
         unitInstance = Instantiate(unitPrefab, fieldContainer);
         unitInstance.name = "Unit";
+        unitView = unitInstance.GetComponent<UnitView>();
 
         var rt = unitInstance.GetComponent<RectTransform>();
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
         rt.pivot = new Vector2(0.5f, 0.5f);
         rt.anchoredPosition = LogicalToVisual(level.Start);
-        rt.sizeDelta = new Vector2(tileSize * 0.7f, tileSize * 0.7f);
+        rt.sizeDelta = new Vector2(tileSize * 0.9f, tileSize * 0.9f * 1.2f);
 
         rt.SetAsLastSibling();
     }
@@ -492,6 +494,14 @@ public class GameSceneController : MonoBehaviour
                 ApplyHighlights(cmd.Highlights);
                 lastRunningHighlights = cmd.Highlights;
 
+                var dy = cmd.To.y - cmd.From.y;
+                if (unitView != null)
+                {
+                    if (dy > 0) unitView.SetState(UnitView.State.MoveRight);
+                    else if (dy < 0) unitView.SetState(UnitView.State.MoveLeft);
+                    else unitView.SetState(UnitView.State.MoveForward);
+                }
+
                 var fromPos = LogicalToVisual(cmd.From);
                 var toPos = LogicalToVisual(cmd.To);
 
@@ -524,6 +534,12 @@ public class GameSceneController : MonoBehaviour
                 else if (cmd.Status == UnitStatus.Stuck)
                 {
                     ApplyHighlights(cmd.Highlights);
+                }
+
+                if (unitView != null)
+                {
+                    if (cmd.Status == UnitStatus.Won) unitView.SetState(UnitView.State.Success);
+                    else unitView.SetState(UnitView.State.Crashed);
                 }
 
                 playbackRoutine = null;
@@ -572,6 +588,7 @@ public class GameSceneController : MonoBehaviour
         ClearStatusLabel();
         ClearHighlights();
         HidePopup();
+        unitView?.SetState(UnitView.State.Thinking);
     }
 
     private void ResetUnit()

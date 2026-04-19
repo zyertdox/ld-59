@@ -2662,7 +2662,7 @@ MonoBehaviour:
   levelLabel: {fileID: 1416401846}
   fieldContainer: {fileID: 981164537}
   tilePrefab: {fileID: 7548906374759008606, guid: 02648591f4447184489d69fc9eb1e442, type: 3}
-  unitPrefab: {fileID: 5030879641384186238, guid: 48cbbd0e84f2a094c882a85fe8ef1aa2, type: 3}
+  unitPrefab: {fileID: 2765725300325287360, guid: 48cbbd0e84f2a094c882a85fe8ef1aa2, type: 3}
   tileSize: 80
   crackSprites:
   - {fileID: 3286163911610860551, guid: 8b5a5b14449a807419eca2ad87eb25a5, type: 3}
