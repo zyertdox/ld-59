@@ -2890,9 +2890,9 @@ MonoBehaviour:
   traceStagger: 70
   arrowSprite: {fileID: 3286163911610860551, guid: 30782eeb4847e404da20337b9352e0ee, type: 3}
   ledSprite: {fileID: 3286163911610860551, guid: ed7c710ea85bd5f46948aef404c5aa71, type: 3}
-  jumperSprite: {fileID: 0}
-  jumperLength: 36
-  jumperThickness: 18
+  jumperSprite: {fileID: 3286163911610860551, guid: 9a8c79b43bdfcdb438c3ddbc1e738440, type: 3}
+  jumperLength: 72
+  jumperThickness: 72
   stepDuration: 0.3
   pauseBetweenSteps: 0.15
   fastToggle: {fileID: 860132207}

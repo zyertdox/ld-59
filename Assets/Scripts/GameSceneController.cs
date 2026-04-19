@@ -474,6 +474,7 @@ public class GameSceneController : MonoBehaviour
         rt.anchoredPosition = pixelPoint;
         rt.sizeDelta = new Vector2(jumperLength, jumperThickness);
         rt.localEulerAngles = Vector3.zero;
+        rt.SetAsLastSibling();
 
         jumperVisuals.Add(go);
     }
