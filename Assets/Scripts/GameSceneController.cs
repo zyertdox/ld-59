@@ -315,18 +315,19 @@ public class GameSceneController : MonoBehaviour
             return;
         }
 
-        var startX = -(row.Length - 1) * neuronSpacing * 0.5f;
-
         for (var i = 0; i < row.Length; i++)
         {
             var node = row[i];
+            var slot = row.Length == 1 ? 1 : GetSlotIndex(node);
+            var x = (slot - 1) * neuronSpacing;
+
             var go = Instantiate(neuronPrefab, NeuronParent);
             go.name = $"Neuron_{node.Id}";
 
             var rt = go.GetComponent<RectTransform>();
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
             rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = new Vector2(startX + i * neuronSpacing, y);
+            rt.anchoredPosition = new Vector2(x, y);
             rt.sizeDelta = new Vector2(neuronSize, neuronSize);
 
             var img = go.GetComponent<Image>();
@@ -347,6 +348,28 @@ public class GameSceneController : MonoBehaviour
             neuronViews[node.Id] = rt;
             if (img != null) baseColors[node.Id] = img.color;
         }
+    }
+
+    private static int GetSlotIndex(NeuronNode node)
+    {
+        return node switch
+        {
+            InputNode i => i.TriggerColor switch
+            {
+                TileColor.Red => 0,
+                TileColor.Yellow => 1,
+                TileColor.Blue => 2,
+                _ => 1
+            },
+            OutputNode o => o.Code switch
+            {
+                'D' => 0,
+                'F' => 1,
+                'U' => 2,
+                _ => 1
+            },
+            _ => 1
+        };
     }
 
     private void DrawWires(BrainData brain)
