@@ -23,6 +23,10 @@ public static class Palette
     public static readonly Color UIText = Hex("#EAEAEA");
     public static readonly Color Wire = Hex("#6F7A8C");
 
+    // Tile details
+    public static readonly Color TileOutline = Hex("#1F2A3A");
+    public static readonly Color TileCrack = Hex("#1F2A3A");
+
     // Glow alpha multiplier (0..1)
     public const float GlowAlpha = 0.35f;
     public const float GlowScale = 1.6f;

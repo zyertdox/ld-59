@@ -2568,8 +2568,8 @@ Canvas:
   m_GameObject: {fileID: 1846223964}
   m_Enabled: 1
   serializedVersion: 3
-  m_RenderMode: 0
-  m_Camera: {fileID: 0}
+  m_RenderMode: 1
+  m_Camera: {fileID: 519420031}
   m_PlaneDistance: 100
   m_PixelPerfect: 0
   m_ReceivesEvents: 1
@@ -2664,6 +2664,15 @@ MonoBehaviour:
   tilePrefab: {fileID: 7548906374759008606, guid: 02648591f4447184489d69fc9eb1e442, type: 3}
   unitPrefab: {fileID: 5030879641384186238, guid: 48cbbd0e84f2a094c882a85fe8ef1aa2, type: 3}
   tileSize: 80
+  crackSprites:
+  - {fileID: 3286163911610860551, guid: 8b5a5b14449a807419eca2ad87eb25a5, type: 3}
+  - {fileID: 3286163911610860551, guid: 8c554087d1abb4c40aec5e024ad8514d, type: 3}
+  - {fileID: 3286163911610860551, guid: bcc868bb62cfa4e4fbb48f44c1d24100, type: 3}
+  - {fileID: 3286163911610860551, guid: 813ad44d08c327b43997fe4cbb89fae6, type: 3}
+  - {fileID: 3286163911610860551, guid: 36b0dc811b9c59e4ab3a2c337e7be513, type: 3}
+  - {fileID: 3286163911610860551, guid: 3df0434e7ac921845ad7d2cdb8061df4, type: 3}
+  crackProbability: 0.4
+  crackAlpha: 1
   brainContainer: {fileID: 124573983}
   neuronPrefab: {fileID: 2111304488154965697, guid: f95e87cdfd3d79846853693b3506daf7, type: 3}
   wirePrefab: {fileID: 8744704245898288226, guid: 4a66d5b0f8946fc45aaaae10ddb832d1, type: 3}

@@ -21,6 +21,9 @@ public class GameSceneController : MonoBehaviour
     [SerializeField] private GameObject tilePrefab;
     [SerializeField] private GameObject unitPrefab;
     [SerializeField] private float tileSize = 80f;
+    [SerializeField] private Sprite[] crackSprites;
+    [SerializeField, Range(0f, 1f)] private float crackProbability = 0.6f;
+    [SerializeField, Range(0f, 1f)] private float crackAlpha = 0.6f;
 
     [Header("Brain")] [SerializeField] private RectTransform brainContainer;
 
@@ -109,6 +112,8 @@ public class GameSceneController : MonoBehaviour
 
             brain = new BrainData();
             DrawWires(brain);
+
+            if (unitInstance != null) unitInstance.transform.SetAsLastSibling();
         }
     }
 
@@ -169,15 +174,50 @@ public class GameSceneController : MonoBehaviour
                 rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
                 rt.pivot = new Vector2(0.5f, 0.5f);
                 rt.anchoredPosition = LogicalToVisual(new Vector2Int(lx, ly));
-                rt.sizeDelta = new Vector2(tileSize - 4, tileSize - 4);
+                rt.sizeDelta = new Vector2(tileSize, tileSize);
 
                 var img = tile.GetComponent<Image>();
                 if (img != null)
                 {
                     img.color = ColorOf(color);
                 }
+
+                TryApplyCrack(tile, lx, ly);
             }
         }
+    }
+
+    private void TryApplyCrack(GameObject tile, int lx, int ly)
+    {
+        if (crackSprites == null || crackSprites.Length == 0) return;
+
+        var crackTransform = tile.transform.Find("Crack");
+        if (crackTransform == null) return;
+
+        var rng = new System.Random(lx * 73856093 ^ ly * 19349663);
+        if (rng.NextDouble() >= crackProbability) return;
+
+        var sprite = crackSprites[rng.Next(crackSprites.Length)];
+        var crackImg = crackTransform.GetComponent<Image>();
+        if (crackImg == null) return;
+
+        crackImg.sprite = sprite;
+        var c = Palette.TileCrack;
+        c.a = crackAlpha;
+        crackImg.color = c;
+
+        var rotation = rng.Next(0, 4) * 90f;
+        var flipX = rng.Next(0, 2) == 0 ? 1f : -1f;
+        var flipY = rng.Next(0, 2) == 0 ? 1f : -1f;
+
+        var rt = crackTransform as RectTransform;
+        if (rt != null)
+        {
+            rt.localRotation = Quaternion.Euler(0f, 0f, rotation);
+            rt.localScale = new Vector3(flipX, flipY, 1f);
+        }
+
+        crackTransform.gameObject.SetActive(true);
     }
 
     private void SpawnUnit()
@@ -635,6 +675,8 @@ public class GameSceneController : MonoBehaviour
             BuildBrainBoard();
             brain = new BrainData();
             DrawWires(brain);
+
+            if (unitInstance != null) unitInstance.transform.SetAsLastSibling();
         }
     }
 
