@@ -32,6 +32,8 @@ public class GameSceneController : MonoBehaviour
     [SerializeField] private float neuronSize = 100f;
     [SerializeField] private float neuronSpacing = 140f;
     [SerializeField] private float neuronRowY = 380f;
+    [SerializeField] private Sprite arrowSprite;
+    [SerializeField] private Sprite ledSprite;
 
     [Header("Playback")] [SerializeField] private float stepDuration = 0.35f;
 
@@ -310,7 +312,9 @@ public class GameSceneController : MonoBehaviour
 
             var img = go.GetComponent<Image>();
             var label = go.GetComponentInChildren<TMP_Text>();
-            ConfigureNeuron(node, img, label);
+            var iconTransform = go.transform.Find("Icon");
+            var iconImg = iconTransform != null ? iconTransform.GetComponent<Image>() : null;
+            ConfigureNeuron(node, img, iconImg, label);
 
             var view = go.GetComponent<NeuronView>();
             if (view == null)
@@ -376,25 +380,31 @@ public class GameSceneController : MonoBehaviour
         return go;
     }
 
-    private static void ConfigureNeuron(NeuronNode node, Image img, TMP_Text label)
+    private void ConfigureNeuron(NeuronNode node, Image chipImg, Image iconImg, TMP_Text label)
     {
-        if (img != null) img.color = Color.white;
+        if (chipImg != null) chipImg.color = Color.white;
+        if (label != null) label.text = string.Empty;
+
+        if (iconImg == null) return;
 
         switch (node)
         {
             case InputNode input:
-                if (label != null)
-                {
-                    label.text = InputLabel(input.TriggerColor);
-                    label.color = ColorOf(input.TriggerColor);
-                }
+                iconImg.sprite = ledSprite;
+                iconImg.color = ColorOf(input.TriggerColor);
+                iconImg.transform.localRotation = Quaternion.identity;
                 break;
             case OutputNode output:
-                if (label != null)
+                iconImg.sprite = arrowSprite;
+                iconImg.color = Palette.PcbGold;
+                var rot = output.Code switch
                 {
-                    label.text = OutputArrow(output.Code);
-                    label.color = Palette.PcbGold;
-                }
+                    'F' => 0f,
+                    'U' => -45f,
+                    'D' => 45f,
+                    _ => 0f
+                };
+                iconImg.transform.localRotation = Quaternion.Euler(0f, 0f, rot);
                 break;
         }
     }

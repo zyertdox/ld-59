@@ -2755,6 +2755,8 @@ MonoBehaviour:
   neuronSize: 150
   neuronSpacing: 210
   neuronRowY: 320
+  arrowSprite: {fileID: 3286163911610860551, guid: 30782eeb4847e404da20337b9352e0ee, type: 3}
+  ledSprite: {fileID: 3286163911610860551, guid: ed7c710ea85bd5f46948aef404c5aa71, type: 3}
   stepDuration: 0.3
   pauseBetweenSteps: 0.15
   fastToggle: {fileID: 860132207}
