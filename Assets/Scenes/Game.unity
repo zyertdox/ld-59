@@ -325,11 +325,11 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1846223968}
+  m_Father: {fileID: 981164537}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 420}
+  m_AnchoredPosition: {x: 0, y: -480}
   m_SizeDelta: {x: 600, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &416133539
@@ -354,14 +354,14 @@ MonoBehaviour:
       m_Calls: []
   m_text: 
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 95e3c648d2e4dc34b81b3e1a05dec88b, type: 2}
-  m_sharedMaterial: {fileID: -1759977135903006847, guid: 95e3c648d2e4dc34b81b3e1a05dec88b, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: cd277d7c5fe511546ab4628211c37843, type: 2}
+  m_sharedMaterial: {fileID: -8027297203105703888, guid: cd277d7c5fe511546ab4628211c37843, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
+    rgba: 4283801812
   m_fontColor: {r: 0.83137256, g: 0.627451, b: 0.33333334, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -379,15 +379,15 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 36
-  m_fontSizeBase: 36
+  m_fontSize: 64
+  m_fontSizeBase: 64
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 0
-  m_HorizontalAlignment: 1
-  m_VerticalAlignment: 256
+  m_fontStyle: 1
+  m_HorizontalAlignment: 2
+  m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
   m_characterHorizontalScale: 1
@@ -1460,7 +1460,8 @@ RectTransform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 416133538}
   m_Father: {fileID: 1846223968}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0}
@@ -2733,7 +2734,6 @@ RectTransform:
   m_Children:
   - {fileID: 124573983}
   - {fileID: 981164537}
-  - {fileID: 416133538}
   - {fileID: 884835432}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
