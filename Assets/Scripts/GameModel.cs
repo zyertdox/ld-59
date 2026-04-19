@@ -7,7 +7,7 @@ public enum TileColor
     None,
     Wall,
     Red,
-    Green,
+    Yellow,
     Blue
 }
 
@@ -53,7 +53,7 @@ public static class NodeCatalog
         return id switch
         {
             "In.R" => new InputNode(TileColor.Red),
-            "In.G" => new InputNode(TileColor.Green),
+            "In.Y" => new InputNode(TileColor.Yellow),
             "In.B" => new InputNode(TileColor.Blue),
             "Out.F" => new OutputNode('F', new Vector2Int(1, 0)),
             "Out.U" => new OutputNode('U', new Vector2Int(1, 1)),

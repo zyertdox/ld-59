@@ -70,7 +70,7 @@ public static class LevelLoader
             '.' => TileColor.None,
             '#' => TileColor.Wall,
             'R' => TileColor.Red,
-            'G' => TileColor.Green,
+            'Y' => TileColor.Yellow,
             'B' => TileColor.Blue,
             _ => throw new ArgumentException($"Unknown tile char: '{c}'")
         };

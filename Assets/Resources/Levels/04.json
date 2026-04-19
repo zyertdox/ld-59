@@ -4,16 +4,16 @@
   "width": 10,
   "height": 5,
   "tiles": [
-    "R.G.B.G.R.",
-    ".G.R.B.R.G",
-    "GBRGRGGBBG",
-    "BGR.BGG.R.",
-    ".G.B.R.G.B"
+    "R.Y.B.Y.R.",
+    ".Y.R.B.R.Y",
+    "YBRYRYYBBY",
+    "BYR.BYY.R.",
+    ".Y.B.R.Y.B"
   ],
   "start": { "x": 0, "y": 2 },
   "exit":  { "x": 9, "y": 2 },
   "nodes": [
-    ["In.R", "In.G", "In.B"],
+    ["In.R", "In.Y", "In.B"],
     ["Out.D", "Out.F", "Out.U"]
   ]
 }

@@ -48,7 +48,6 @@ public class GameSceneController : MonoBehaviour
     private readonly Dictionary<string, GameObject> wireVisuals = new();
     private readonly Dictionary<string, Color> baseColors = new();
     private readonly HashSet<string> currentlyHighlighted = new();
-    private static readonly Color HighlightColor = new(1f, 0.95f, 0.4f, 1f);
 
     private BrainData brain;
     private NeuronView dragSource;
@@ -217,10 +216,10 @@ public class GameSceneController : MonoBehaviour
     {
         return c switch
         {
-            TileColor.Red => new Color(0.9f, 0.3f, 0.3f),
-            TileColor.Green => new Color(0.35f, 0.8f, 0.4f),
-            TileColor.Blue => new Color(0.3f, 0.55f, 0.95f),
-            TileColor.Wall => new Color(0.2f, 0.2f, 0.2f),
+            TileColor.Red => Palette.SignalRed,
+            TileColor.Yellow => Palette.SignalYellow,
+            TileColor.Blue => Palette.SignalBlue,
+            TileColor.Wall => Palette.Wall,
             _ => Color.clear
         };
     }
@@ -371,7 +370,7 @@ public class GameSceneController : MonoBehaviour
         return c switch
         {
             TileColor.Red => "R",
-            TileColor.Green => "G",
+            TileColor.Yellow => "Y",
             TileColor.Blue => "B",
             _ => "?"
         };
@@ -427,7 +426,7 @@ public class GameSceneController : MonoBehaviour
 
         if (active)
         {
-            img.color = HighlightColor;
+            img.color = Palette.Highlight;
         }
         else if (baseColors.TryGetValue(id, out var baseColor))
         {
