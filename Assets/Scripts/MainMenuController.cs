@@ -31,6 +31,7 @@ public class MainMenuController : MonoBehaviour
 
     void OnPlayClicked()
     {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayClick();
         SceneManager.LoadScene(gameSceneName);
     }
 }

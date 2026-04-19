@@ -17,6 +17,8 @@ public class LevelSelectController : MonoBehaviour
 
     private void Start()
     {
+        AudioManager.GetOrCreate();
+
         if (levelName != null)
         {
             levelName.text = string.Empty;
@@ -92,12 +94,14 @@ public class LevelSelectController : MonoBehaviour
 
     private void OnLevelClicked(string id)
     {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayClick();
         GameSession.CurrentLevelId = id;
         SceneManager.LoadScene(gameSceneName);
     }
 
     private void OnBackClicked()
     {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayClick();
         SceneManager.LoadScene(mainMenuSceneName);
     }
 

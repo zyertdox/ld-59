@@ -700,78 +700,90 @@ public class GameSceneController : MonoBehaviour
 
         IList<string> lastRunningHighlights = null;
 
-        foreach (var cmd in commands)
+        try
         {
-            if (cmd.Status == UnitStatus.Running)
+            foreach (var cmd in commands)
             {
-                ApplyHighlights(cmd.Highlights);
-                lastRunningHighlights = cmd.Highlights;
-
-                var dy = cmd.To.y - cmd.From.y;
-                if (unitView != null)
-                {
-                    if (dy > 0) unitView.SetState(UnitView.State.MoveRight);
-                    else if (dy < 0) unitView.SetState(UnitView.State.MoveLeft);
-                    else unitView.SetState(UnitView.State.MoveForward);
-                }
-
-                var fromPos = LogicalToVisual(cmd.From);
-                var toPos = LogicalToVisual(cmd.To);
-
-                var elapsed = 0f;
-                var duration = CurrentStepDuration;
-                while (elapsed < duration)
-                {
-                    elapsed += Time.deltaTime;
-                    duration = CurrentStepDuration;
-                    rt.anchoredPosition = Vector2.Lerp(fromPos, toPos, Mathf.Clamp01(elapsed / duration));
-                    yield return null;
-                }
-
-                rt.anchoredPosition = toPos;
-                ClearHighlights();
-
-                if (CurrentPause > 0f)
-                {
-                    yield return new WaitForSeconds(CurrentPause);
-                }
-            }
-            else
-            {
-                Debug.Log($"Simulation ended: {cmd.Status}");
-
-                if (cmd.Status == UnitStatus.Crashed && lastRunningHighlights != null)
-                {
-                    ApplyHighlights(lastRunningHighlights);
-                }
-                else if (cmd.Status == UnitStatus.Stuck)
+                if (cmd.Status == UnitStatus.Running)
                 {
                     ApplyHighlights(cmd.Highlights);
-                }
+                    lastRunningHighlights = cmd.Highlights;
 
-                if (unitView != null)
+                    var dy = cmd.To.y - cmd.From.y;
+                    if (unitView != null)
+                    {
+                        if (dy > 0) unitView.SetState(UnitView.State.MoveRight);
+                        else if (dy < 0) unitView.SetState(UnitView.State.MoveLeft);
+                        else unitView.SetState(UnitView.State.MoveForward);
+                    }
+
+                    if (AudioManager.Instance != null) AudioManager.Instance.StartMoveLoop();
+
+                    var fromPos = LogicalToVisual(cmd.From);
+                    var toPos = LogicalToVisual(cmd.To);
+
+                    var elapsed = 0f;
+                    var duration = CurrentStepDuration;
+                    while (elapsed < duration)
+                    {
+                        elapsed += Time.deltaTime;
+                        duration = CurrentStepDuration;
+                        rt.anchoredPosition = Vector2.Lerp(fromPos, toPos, Mathf.Clamp01(elapsed / duration));
+                        yield return null;
+                    }
+
+                    rt.anchoredPosition = toPos;
+                    ClearHighlights();
+
+                    if (CurrentPause > 0f)
+                    {
+                        yield return new WaitForSeconds(CurrentPause);
+                    }
+                }
+                else
                 {
-                    if (cmd.Status == UnitStatus.Won) unitView.SetState(UnitView.State.Success);
-                    else unitView.SetState(UnitView.State.Crashed);
+                    Debug.Log($"Simulation ended: {cmd.Status}");
+
+                    if (cmd.Status == UnitStatus.Crashed && lastRunningHighlights != null)
+                    {
+                        ApplyHighlights(lastRunningHighlights);
+                    }
+                    else if (cmd.Status == UnitStatus.Stuck)
+                    {
+                        ApplyHighlights(cmd.Highlights);
+                    }
+
+                    if (unitView != null)
+                    {
+                        if (cmd.Status == UnitStatus.Won) unitView.SetState(UnitView.State.Success);
+                        else unitView.SetState(UnitView.State.Crashed);
+                    }
+
+                    playbackRoutine = null;
+                    OnSimulationEnded(cmd.Status);
+                    yield break;
                 }
-
-                playbackRoutine = null;
-                OnSimulationEnded(cmd.Status);
-                yield break;
             }
-        }
 
-        ClearHighlights();
-        playbackRoutine = null;
+            ClearHighlights();
+            playbackRoutine = null;
+        }
+        finally
+        {
+            if (AudioManager.Instance != null) AudioManager.Instance.StopMoveLoop();
+        }
     }
 
     private void OnBackClicked()
     {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayClick();
         SceneManager.LoadScene(levelSelectSceneName);
     }
 
     private void OnPlayClicked()
     {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayClick();
+
         if (level == null || brain == null)
         {
             return;
@@ -795,6 +807,8 @@ public class GameSceneController : MonoBehaviour
 
     private void OnResetClicked()
     {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayClick();
+
         if (playbackRoutine != null)
         {
             StopCoroutine(playbackRoutine);
@@ -824,12 +838,15 @@ public class GameSceneController : MonoBehaviour
         switch (status)
         {
             case UnitStatus.Won:
+                if (AudioManager.Instance != null) AudioManager.Instance.PlayWinJingle();
                 ShowWin();
                 break;
             case UnitStatus.Crashed:
+                if (AudioManager.Instance != null) AudioManager.Instance.PlayLoseJingle();
                 SetStatusLabel("Crashed");
                 break;
             case UnitStatus.Stuck:
+                if (AudioManager.Instance != null) AudioManager.Instance.PlayLoseJingle();
                 SetStatusLabel("Stuck");
                 break;
         }
@@ -862,11 +879,13 @@ public class GameSceneController : MonoBehaviour
 
     private void OnNextClicked()
     {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayClick();
+
         var current = GameSession.CurrentLevelId;
         var idx = Array.IndexOf(levelOrder, current);
         if (idx < 0 || idx >= levelOrder.Length - 1)
         {
-            OnBackClicked();
+            SceneManager.LoadScene(levelSelectSceneName);
             return;
         }
 
@@ -962,6 +981,7 @@ public class GameSceneController : MonoBehaviour
 
     private static void OnFastToggleChanged(bool isOn)
     {
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayClick();
         GameSession.FastPlayback = isOn;
     }
 
@@ -1019,6 +1039,7 @@ public class GameSceneController : MonoBehaviour
         {
             var wire = new Wire(Guid.NewGuid().ToString(), input, output);
             brain.Wires.Add(wire);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlayConnect();
         }
 
         if (tempWireGo != null)

@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 public class AudioManager : MonoBehaviour
@@ -11,6 +12,13 @@ public class AudioManager : MonoBehaviour
 
     AudioSource musicSource;
     AudioSource sfxSource;
+    AudioSource loopSource;
+
+    AudioClip clickClip;
+    AudioClip moveClip;
+    AudioClip[] connectClips;
+    AudioClip[] beepClips;
+    Coroutine jingleRoutine;
 
     public float MusicVolume
     {
@@ -30,6 +38,7 @@ public class AudioManager : MonoBehaviour
         {
             float clamped = Mathf.Clamp01(value);
             sfxSource.volume = clamped;
+            if (loopSource != null) loopSource.volume = clamped;
             PlayerPrefs.SetFloat(SfxVolumeKey, clamped);
         }
     }
@@ -60,6 +69,25 @@ public class AudioManager : MonoBehaviour
         sfxSource.loop = false;
         sfxSource.playOnAwake = false;
         sfxSource.volume = PlayerPrefs.GetFloat(SfxVolumeKey, DefaultSfxVolume);
+
+        loopSource = gameObject.AddComponent<AudioSource>();
+        loopSource.loop = true;
+        loopSource.playOnAwake = false;
+        loopSource.volume = sfxSource.volume;
+
+        clickClip = Resources.Load<AudioClip>("Sounds/click");
+        moveClip = Resources.Load<AudioClip>("Sounds/move");
+        connectClips = new AudioClip[8];
+        for (var i = 0; i < connectClips.Length; i++)
+        {
+            connectClips[i] = Resources.Load<AudioClip>("Sounds/connect_" + (i + 1));
+        }
+
+        beepClips = new AudioClip[6];
+        for (var i = 0; i < beepClips.Length; i++)
+        {
+            beepClips[i] = Resources.Load<AudioClip>("Sounds/beep" + (i + 1));
+        }
     }
 
     public void PlayMusic(AudioClip clip)
@@ -75,5 +103,59 @@ public class AudioManager : MonoBehaviour
     {
         if (clip == null) return;
         sfxSource.PlayOneShot(clip);
+    }
+
+    public void PlayClick() => PlaySfx(clickClip);
+
+    public void StartMoveLoop()
+    {
+        if (moveClip == null || loopSource == null) return;
+        if (loopSource.isPlaying && loopSource.clip == moveClip) return;
+        loopSource.clip = moveClip;
+        loopSource.volume = sfxSource.volume;
+        loopSource.Play();
+    }
+
+    public void StopMoveLoop()
+    {
+        if (loopSource != null) loopSource.Stop();
+    }
+
+    public void PlayConnect()
+    {
+        if (connectClips == null || connectClips.Length == 0) return;
+        PlaySfx(connectClips[Random.Range(0, connectClips.Length)]);
+    }
+
+    public void PlayWinJingle() => PlayJingle(ascending: true);
+
+    public void PlayLoseJingle() => PlayJingle(ascending: false);
+
+    void PlayJingle(bool ascending)
+    {
+        if (beepClips == null || beepClips.Length < 2) return;
+        if (jingleRoutine != null) StopCoroutine(jingleRoutine);
+        jingleRoutine = StartCoroutine(JingleRoutine(ascending));
+    }
+
+    IEnumerator JingleRoutine(bool ascending)
+    {
+        var half = beepClips.Length / 2;
+        var highIdx = Random.Range(0, half);
+        var lowIdx = Random.Range(half, beepClips.Length);
+
+        var first = ascending ? beepClips[lowIdx] : beepClips[highIdx];
+        var second = ascending ? beepClips[highIdx] : beepClips[lowIdx];
+
+        if (first != null)
+        {
+            sfxSource.PlayOneShot(first);
+            yield return new WaitForSeconds(first.length);
+        }
+        if (second != null)
+        {
+            sfxSource.PlayOneShot(second);
+        }
+        jingleRoutine = null;
     }
 }
