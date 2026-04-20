@@ -55,7 +55,7 @@ public class CursorManager : MonoBehaviour
 
     static void AttachToSelectables()
     {
-        var selectables = FindObjectsByType<Selectable>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        var selectables = FindObjectsByType<Selectable>(FindObjectsInactive.Include);
         foreach (var s in selectables)
         {
             if (s.GetComponent<ButtonCursorHover>() == null)

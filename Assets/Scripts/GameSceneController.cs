@@ -34,14 +34,13 @@ public class GameSceneController : MonoBehaviour
     [SerializeField] private float neuronSpacing = 140f;
     [SerializeField] private float neuronRowY = 380f;
     [SerializeField] private float neuronRowPadding = 40f;
-    [SerializeField] private float traceStagger = 70f;
     [SerializeField] private Sprite arrowSprite;
     [SerializeField] private Sprite ledSprite;
     [SerializeField] private Sprite jumperSprite;
     [SerializeField] private float jumperLength = 36f;
     [SerializeField] private float jumperThickness = 18f;
 
-    private RectTransform NeuronParent => neuronField != null ? neuronField : brainContainer;
+    public RectTransform NeuronParent => neuronField != null ? neuronField : brainContainer;
 
     [Header("Playback")] [SerializeField] private float stepDuration = 0.35f;
 
@@ -127,6 +126,8 @@ public class GameSceneController : MonoBehaviour
             DrawWires(brain);
 
             if (unitInstance != null) unitInstance.transform.SetAsLastSibling();
+
+            TutorialController.TryAttach(this);
         }
     }
 
@@ -939,6 +940,9 @@ public class GameSceneController : MonoBehaviour
         dragSource = null;
         unitInstance = null;
 
+        var existingTutorial = GetComponent<TutorialController>();
+        if (existingTutorial != null) Destroy(existingTutorial);
+
         ClearContainer(fieldContainer);
         ClearContainer(NeuronParent);
         neuronViews.Clear();
@@ -960,6 +964,8 @@ public class GameSceneController : MonoBehaviour
             DrawWires(brain);
 
             if (unitInstance != null) unitInstance.transform.SetAsLastSibling();
+
+            TutorialController.TryAttach(this);
         }
     }
 
@@ -1014,6 +1020,12 @@ public class GameSceneController : MonoBehaviour
         GameSession.FastPlayback = isOn;
     }
 
+    public event Action OnDragStarted;
+    public event Action<bool> OnDragFinished;
+
+    public IReadOnlyDictionary<string, RectTransform> NeuronViews => neuronViews;
+    public LevelData Level => level;
+
     public void OnNeuronDragStart(NeuronView source, PointerEventData eventData)
     {
         if (source.Node is not InputNode)
@@ -1027,6 +1039,7 @@ public class GameSceneController : MonoBehaviour
         }
 
         dragSource = source;
+        OnDragStarted?.Invoke();
 
         RemoveWireFromInput(source.Node.Id);
 
@@ -1064,11 +1077,13 @@ public class GameSceneController : MonoBehaviour
 
         var target = FindNeuronUnderPointer(eventData);
 
+        var success = false;
         if (target != null && target.Node is OutputNode output && dragSource.Node is InputNode input)
         {
             var wire = new Wire(Guid.NewGuid().ToString(), input, output);
             brain.Wires.Add(wire);
             if (AudioManager.Instance != null) AudioManager.Instance.PlayConnect();
+            success = true;
         }
 
         if (tempWireGo != null)
@@ -1080,6 +1095,7 @@ public class GameSceneController : MonoBehaviour
         dragSource = null;
 
         RedrawAllWires();
+        OnDragFinished?.Invoke(success);
     }
 
     private void RemoveWireFromInput(string inputId)
