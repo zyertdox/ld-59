@@ -1,17 +1,17 @@
 {
-  "id": "04",
-  "name": "Crossroads",
+  "id": "08",
+  "name": "Interference",
   "width": 10,
   "height": 5,
   "tiles": [
-    ".R...B.B..",
-    "..B.Y.Y.B.",
-    "RY.YB.RY.R",
-    ".B...Y..Y.",
-    "...Y..B..."
+    "BYRBYRYYRB",
+    "RBYRBRRYYR",
+    "YRBYBBY.YY",
+    "BYRRYRBYRB",
+    "RBBRBYRBYR"
   ],
   "start": { "x": 0, "y": 2 },
-  "exit":  { "x": 9, "y": 2 },
+  "exit":  { "x": 9, "y": 1 },
   "nodes": [
     ["In.R", "In.Y", "In.B"],
     ["Out.D", "Out.F", "Out.U"]
