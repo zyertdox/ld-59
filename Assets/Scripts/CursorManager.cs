@@ -102,7 +102,9 @@ public class CursorManager : MonoBehaviour
         RenderTexture.active = rt;
 
         var tex = new Texture2D(w, h, TextureFormat.RGBA32, false, false);
+#if UNITY_EDITOR
         tex.alphaIsTransparency = true;
+#endif
         tex.wrapMode = TextureWrapMode.Clamp;
         tex.filterMode = FilterMode.Bilinear;
         tex.ReadPixels(new Rect(0, 0, w, h), 0, 0, false);
